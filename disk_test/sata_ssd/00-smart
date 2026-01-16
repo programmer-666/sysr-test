@@ -1,0 +1,34 @@
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
+
+# Scriptlerin bulunduğu klasör (gerekirse değiştir)
+SCRIPT_DIR="/root/"
+
+echo "=== SMART TESTS BEGUN ==="
+
+# 01 ve 02 scriptleri
+for script in 01-smart_short_test 02-smart_long_test; do
+    echo "[i] $(date '+%Y-%m-%d %H:%M:%S') - Running: $script"
+    bash "$SCRIPT_DIR/$script"
+    
+    # Eğer 01 ise 3 dk bekle
+    if [[ "$script" == "01-smart_short_test" ]]; then
+        echo "[i] Waiting 1m..."
+        sleep 130
+    fi
+done
+
+echo "[i] Waiting 2m..."
+sleep 130
+
+bash "$SCRIPT_DIR/03-smart_check"
+bash "$SCRIPT_DIR/04-smart_attr"
+
+# 03 ve 04 scriptleri
+# for script in 03-smart_check 04-smart_attr; do
+#     echo "[i] $(date '+%Y-%m-%d %H:%M:%S') - Running: $script"
+#     bash "$SCRIPT_DIR/$script"
+# done
+
+echo "[i] Done."

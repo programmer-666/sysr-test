@@ -1,0 +1,17 @@
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
+
+DISK_LIST="s_disks"
+
+while read -r disk; do
+    [[ -z "$disk" ]] && continue
+
+    if [[ ! -b "$disk" ]]; then
+        echo "Uyarı: $disk blok aygıtı yok, atlanıyor."
+        continue
+    fi
+
+    echo "SMART long testi başlatılıyor: $disk"
+    smartctl -t long "$disk"
+done < "$DISK_LIST"

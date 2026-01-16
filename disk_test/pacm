@@ -1,0 +1,1 @@
+pacman -Syu smartmontools e2fsprogs
