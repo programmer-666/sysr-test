@@ -1,0 +1,52 @@
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
+
+BASE_DIR="/root/test_results/disks"
+DISK_LIST="s_disks"
+
+timestamp() {
+    date -u +"%s"
+}
+
+CSV_HEADER="Attribute_ID,Attribute_Name,Value,Worst,Thresh,Type,Raw_Value"
+
+while read -r disk; do
+    [[ -z "$disk" ]] && continue
+
+    if [[ ! -b "$disk" ]]; then
+        echo "Uyarı: $disk aygıtı bulunamadı, atlanıyor."
+        continue
+    fi
+
+    serial=$(smartctl -i --json "$disk" 2>/dev/null | jq -r '.serial_number // "UNKNOWN"')
+
+    dir="$BASE_DIR/$serial"
+    mkdir -p "$dir"
+
+    outfile="$dir/$(timestamp)_${serial}_ATTR.csv"
+
+    echo "$CSV_HEADER" > "$outfile"
+
+    smartctl -A "$disk" | awk '
+    BEGIN { OFS="," }
+    NR==1 { next }
+    /^[[:space:]]*[0-9]+/ {
+      id = $1
+      name = $2
+      for (i=3; i<=4; i++) {
+        if ($i ~ /[A-Za-z]/) {
+          name = name "_" $i
+        }
+      }
+      val = $(NF-4)
+      worst = $(NF-3)
+      thresh = $(NF-2)
+      raw = $NF
+      type = $(NF-5)
+      print id, name, val, worst, thresh, type, raw
+    }' >> "$outfile"
+
+    echo "CSV kaydedildi: $outfile"
+
+done < "$DISK_LIST"

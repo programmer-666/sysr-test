@@ -1,0 +1,37 @@
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
+
+BASE_DIR="/root/test_results/disks"
+
+DISK_LIST="s_disks"
+
+timestamp() {
+    date -u +"%s"
+}
+
+while read -r disk; do
+    [[ -z "$disk" ]] && continue
+
+    if [[ ! -b "$disk" ]]; then
+        echo "Uyarı: $disk disk aygıtı bulunamadı, atlanıyor."
+        continue
+    fi
+
+    serial=$(smartctl -i --json "$disk" | jq -r '.serial_number // empty')
+
+    if [[ -z "$serial" ]]; then
+        echo "Uyarı: $disk için seri numarası alınamadı!"
+        serial="UNKNOWN"
+    fi
+
+    dir="$BASE_DIR/$serial"
+    mkdir -p "$dir"
+
+    outfile="$dir/$(timestamp)_${serial}_SMART.json"
+
+    smartctl --json --all "$disk" > "$outfile"
+
+    echo "Kaydedildi: $outfile"
+
+done < "$DISK_LIST"
