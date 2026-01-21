@@ -39,18 +39,24 @@ Get-Content $diskListFile | ForEach-Object {
             return
         }
 
+        # Seri numarasi klasoru
+        $serialDir = Join-Path -Path (Get-Location) -ChildPath $serial
+        if (-not (Test-Path $serialDir)) {
+            New-Item -ItemType Directory -Path $serialDir | Out-Null
+        }
+
         # UNIX timestamp (UTC)
         $timestamp = [int][double]::Parse(
             (Get-Date -Date (Get-Date).ToUniversalTime() -UFormat %s)
         )
 
-        # Dosya adi
-        $fileName = "${timestamp}_${serial}_SMART.json"
+        # Dosya yolu
+        $filePath = Join-Path $serialDir "${timestamp}_SMART.json"
 
         # JSON'u yaz
-        $jsonText | Out-File -Encoding utf8 $fileName
+        $jsonText | Out-File -Encoding utf8 $filePath
 
-        Write-Host "Kaydedildi -> $fileName"
+        Write-Host "Kaydedildi -> $filePath"
 
     } catch {
         Write-Warning "Hata olustu ($disk): $_"

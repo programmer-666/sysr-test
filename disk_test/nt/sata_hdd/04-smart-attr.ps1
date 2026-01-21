@@ -39,10 +39,16 @@ Get-Content $diskListFile | ForEach-Object {
             return
         }
 
-        # SMART attribute'lari var mi
+        # ATA SMART attribute kontrolu
         if (-not $json.ata_smart_attributes.table) {
             Write-Warning "ATA SMART attribute bulunamadi: $disk"
             return
+        }
+
+        # Seri numarasi klasoru
+        $serialDir = Join-Path -Path (Get-Location) -ChildPath $serial
+        if (-not (Test-Path $serialDir)) {
+            New-Item -ItemType Directory -Path $serialDir | Out-Null
         }
 
         # UNIX timestamp (UTC)
@@ -50,8 +56,8 @@ Get-Content $diskListFile | ForEach-Object {
             (Get-Date -Date (Get-Date).ToUniversalTime() -UFormat %s)
         )
 
-        # CSV dosya adi
-        $csvFile = "${timestamp}_${serial}_ATTR.csv"
+        # CSV dosya yolu
+        $csvFilePath = Join-Path $serialDir "${timestamp}_ATTR.csv"
 
         # Attribute'lari CSV objesine cevir
         $csvData = $json.ata_smart_attributes.table | ForEach-Object {
@@ -69,11 +75,13 @@ Get-Content $diskListFile | ForEach-Object {
         }
 
         # CSV yaz
-        $csvData | Export-Csv -Path $csvFile -NoTypeInformation -Encoding UTF8
+        $csvData | Export-Csv -Path $csvFilePath -NoTypeInformation -Encoding UTF8
 
-        Write-Host "Kaydedildi -> $csvFile"
+        Write-Host "Kaydedildi -> $csvFilePath"
 
     } catch {
         Write-Warning "Hata olustu ($disk): $_"
     }
 }
+
+Write-Host "Tum diskler icin islem tamamlandi."
