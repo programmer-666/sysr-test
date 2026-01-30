@@ -2,46 +2,34 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-# Kaydedilecek temel klasör
 BASE_DIR="/root/test_results/disks"
 
-# s_disks dosyasının konumu
 DISK_LIST="s_disks"
 
-# Şu anki tarih/saat formatı
 timestamp() {
-    date +"%Y-%m-%dT%H:%M:%S"
+    date -u +"%s"
 }
 
-# Her disk için döngü
 while read -r disk; do
-    # Boş satırları atla
     [[ -z "$disk" ]] && continue
 
-    # Aygıtın gerçekten varsa
     if [[ ! -b "$disk" ]]; then
         echo "Uyarı: $disk disk aygıtı bulunamadı, atlanıyor."
         continue
     fi
 
-    # Önce seri numarasını al
-    serial=$(smartctl -i --json "$disk" \
-        | jq -r '.serial_number // empty')
+    serial=$(smartctl -i --json "$disk" | jq -r '.serial_number // empty')
 
-    # Eğer seri numarası yoksa hata ver
     if [[ -z "$serial" ]]; then
         echo "Uyarı: $disk için seri numarası alınamadı!"
         serial="UNKNOWN"
     fi
 
-    # Seri no’lu klasör yolunu oluştur
     dir="$BASE_DIR/$serial"
     mkdir -p "$dir"
 
-    # Çıktı dosyası adı: tarih + seri + _SMART.json
     outfile="$dir/$(timestamp)_${serial}_SMART.json"
 
-    # SMART verilerini JSON olarak al
     smartctl --json --all "$disk" > "$outfile"
 
     echo "Kaydedildi: $outfile"

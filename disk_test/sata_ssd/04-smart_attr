@@ -5,12 +5,10 @@ IFS=$'\n\t'
 BASE_DIR="/root/test_results/disks"
 DISK_LIST="s_disks"
 
-# Zaman damgası
 timestamp() {
-    date +"%Y-%m-%dT%H:%M:%S"
+    date -u +"%s"
 }
 
-# Başlık satırı
 CSV_HEADER="Attribute_ID,Attribute_Name,Value,Worst,Thresh,Type,Raw_Value"
 
 while read -r disk; do
@@ -21,44 +19,34 @@ while read -r disk; do
         continue
     fi
 
-    echo "SMART attribute CSV çıktısı alınıyor: $disk"
-
-    # Seri numarasını JSON ile al, varsa, yoksa UNKNOWN
     serial=$(smartctl -i --json "$disk" 2>/dev/null | jq -r '.serial_number // "UNKNOWN"')
 
-    # Klasör oluştur
     dir="$BASE_DIR/$serial"
     mkdir -p "$dir"
 
-    outfile="$dir/$(timestamp)_${serial}_SMART_ATTR.csv"
+    outfile="$dir/$(timestamp)_${serial}_ATTR.csv"
 
-    # Başlık satırını yaz
     echo "$CSV_HEADER" > "$outfile"
 
-    # smartctl -A çıktısını CSV'ye çevir
     smartctl -A "$disk" | awk '
     BEGIN { OFS="," }
-    # header başlığını atla
     NR==1 { next }
-    # sadece satırları parse et
     /^[[:space:]]*[0-9]+/ {
       id = $1
       name = $2
-      # ATTRIBUTE_NAME alanında "_" veya "-" olabilir, bunu _ ile birleştir
       for (i=3; i<=4; i++) {
         if ($i ~ /[A-Za-z]/) {
           name = name "_" $i
         }
       }
-      # VALUE, WORST, THRESH ve RAW_VALUE değerleri
       val = $(NF-4)
       worst = $(NF-3)
       thresh = $(NF-2)
       raw = $NF
-      # TYPE sütununu bulmak için
       type = $(NF-5)
       print id, name, val, worst, thresh, type, raw
     }' >> "$outfile"
 
     echo "CSV kaydedildi: $outfile"
+
 done < "$DISK_LIST"
