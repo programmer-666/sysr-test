@@ -2,7 +2,7 @@
 
 DISK_LIST_FILE="s_disks"
 BASE_OUTPUT_DIR="/root/test_results/disks"
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+TIMESTAMP=$(date -u +"%s")
 
 command -v fio >/dev/null 2>&1 || {
     echo "fio not found"
