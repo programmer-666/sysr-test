@@ -1,0 +1,54 @@
+#!/bin/bash
+
+DISK_LIST_FILE="s_disk"
+BASE_OUTPUT_DIR="/root/test_results/disks"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+
+command -v fio >/dev/null 2>&1 || {
+    echo "fio not found"
+    exit 1
+}
+
+if [[ ! -f "$DISK_LIST_FILE" ]]; then
+    echo "$DISK_LIST_FILE not found"
+    exit 1
+fi
+
+while read -r line; do
+    if [[ "$line" =~ (/dev/sd[a-z]+) ]]; then
+        DISK="${BASH_REMATCH[1]}"
+
+        SERIAL=$(lsblk -no SERIAL "$DISK" | tr -d ' ')
+
+        if [[ -z "$SERIAL" ]]; then
+            SERIAL=$(udevadm info --query=property --name="$DISK" 2>/dev/null | \
+                     grep ID_SERIAL= | cut -d= -f2)
+        fi
+
+        if [[ -z "$SERIAL" ]]; then
+            SERIAL="UNKNOWN_SERIAL"
+        fi
+
+        OUTPUT_DIR="${BASE_OUTPUT_DIR}/${SERIAL}"
+        mkdir -p "$OUTPUT_DIR"
+
+        OUTPUT_FILE="${OUTPUT_DIR}/${TIMESTAMP}_${SERIAL}_READS.csv"
+
+        echo "Testing $DISK (Serial: $SERIAL)"
+
+        fio --name=read_test \
+            --filename="$DISK" \
+            --rw=read \
+            --bs=1M \
+            --iodepth=32 \
+            --numjobs=1 \
+            --direct=1 \
+            --runtime=30 \
+            --time_based \
+            --group_reporting \
+            --output-format=csv \
+            --output="$OUTPUT_FILE"
+
+        echo "Results: $OUTPUT_FILE"
+    fi
+done < "$DISK_LIST_FILE"

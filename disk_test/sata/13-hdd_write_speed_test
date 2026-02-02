@@ -1,0 +1,47 @@
+#!/bin/bash
+
+DISK_LIST_FILE="s_disk"
+BASE_OUTPUT_DIR="/root/test_results/disks"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+
+command -v fio >/dev/null 2>&1 || {
+    echo "fio not found"
+    exit 1
+}
+
+if [[ ! -f "$DISK_LIST_FILE" ]]; then
+    echo "$DISK_LIST_FILE not found"
+    exit 1
+fi
+
+while read -r line; do
+    if [[ "$line" =~ (/dev/sd[a-z]+) ]]; then
+        DISK="${BASH_REMATCH[1]}"
+
+        SERIAL=$(lsblk -no SERIAL "$DISK" | tr -d ' ')
+        [[ -z "$SERIAL" ]] && SERIAL=$(udevadm info --query=property --name="$DISK" | grep ID_SERIAL= | cut -d= -f2)
+        [[ -z "$SERIAL" ]] && SERIAL="UNKNOWN_SERIAL"
+
+        OUTPUT_DIR="${BASE_OUTPUT_DIR}/${SERIAL}"
+        mkdir -p "$OUTPUT_DIR"
+
+        OUTPUT_FILE="${OUTPUT_DIR}/${TIMESTAMP}_${SERIAL}_HDD_WRITES.csv"
+
+        echo "HDD WRITE test: $DISK (Serial: $SERIAL)"
+
+        fio --name=hdd_write_test \
+            --filename="$DISK" \
+            --rw=write \
+            --bs=128K \
+            --iodepth=4 \
+            --numjobs=1 \
+            --direct=1 \
+            --runtime=60 \
+            --time_based \
+            --group_reporting \
+            --output-format=csv \
+            --output="$OUTPUT_FILE"
+
+        echo "Results: $OUTPUT_FILE"
+    fi
+done < "$DISK_LIST_FILE"
